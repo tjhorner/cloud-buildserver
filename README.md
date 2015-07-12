@@ -1,5 +1,7 @@
 # cloud-buildserver
 
+[Command Line Client](https://github.com/tjhorner/cloud-buildcli)
+
 The build server written in Node.js that I use for my local server that's sitting right next to me at the time of writing this document.
 
 ## How to set up

@@ -17,28 +17,33 @@ function logRemote(message, socket, tag){
 }
 
 function build(scriptIndex, socket){
-  if(config.scripts[scriptIndex]){
-    var scriptName = config.scripts[scriptIndex];
-    logRemote("Running build script " + scriptName + ".", socket);
+  try{
+    if(config.scripts[scriptIndex]){
+      var scriptName = config.scripts[scriptIndex];
+      logRemote("Running build script " + scriptName + ".", socket);
 
-    var script = spawn("./scripts/" + scriptName);
+      var script = spawn("./scripts/" + scriptName);
 
-    script.stdout.setEncoding('utf8');
-    script.stdout.on('data', function(data) {
-      logRemote(data, socket, scriptName);
-    });
+      script.stdout.setEncoding('utf8');
+      script.stdout.on('data', function(data) {
+        logRemote(data, socket, scriptName);
+      });
 
-    script.on('exit', function(code){
-      logRemote("Build script complete with exit code " + code + ".", socket);
-      if(code !== 0){
-        logRemote("WARNING: Script exited with non-zero exit code. Please check.".red, socket);
-      }
-      build(scriptIndex + 1, socket);
-    });
-  }else{
-    logRemote("Build complete, bye!", socket);
+      script.on('exit', function(code){
+        logRemote("Build script complete with exit code " + code + ".", socket);
+        if(code !== 0){
+          logRemote("WARNING: Script exited with non-zero exit code. Please check.".red, socket);
+        }
+        build(scriptIndex + 1, socket);
+      });
+    }else{
+      logRemote("Build complete, bye!", socket);
+      socket.emit("build:complete");
+      socket.disconnect();
+    }
+  }catch(e){
     socket.emit("build:complete");
-    socket.disconnect();
+    logRemote("Internal build error, exiting. Error:\n" + e, socket);
   }
 }
 
