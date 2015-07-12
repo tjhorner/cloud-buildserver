@@ -19,14 +19,15 @@ function logRemote(message, socket, tag){
 function build(scriptIndex, socket){
   try{
     if(config.scripts[scriptIndex]){
-      var scriptName = config.scripts[scriptIndex];
+      var scriptName = config.scripts[scriptIndex],
+          cleanScriptName = scriptName.split(".")[0];
       logRemote("Running build script " + scriptName + ".", socket);
 
       var script = spawn("./scripts/" + scriptName);
 
       script.stdout.setEncoding('utf8');
       script.stdout.on('data', function(data) {
-        logRemote(data, socket, scriptName);
+        logRemote(data, socket, cleanScriptName);
       });
 
       script.on('exit', function(code){
