@@ -12,6 +12,9 @@
       "type": "node_version"
     }
   ],
+  "keys": {
+    "github": "your_github_personal_access_token"
+  },
   "scripts": [
     "pull.sh",
     "run.sh"

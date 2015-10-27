@@ -4,20 +4,35 @@ var express = require('express'),
     io = require('socket.io')(http),
     spawn = require('child_process').spawn,
     config = require('./config.json'),
+    bodyParser = require('body-parser'),
+    crypto = require('crypto'),
     // colors are super important
     colors = require('colors');
 
-app.get('/status', function(req, res){
-  res.send({ready: true});
-});
+// get a key at https://github.com/settings/tokens/new?description=Cloud%20build%20server&scopes=repo
+if(config.keys.github){
+  var GitHub = require('github'),
+      github = new GitHub({
+        version: "3.0.0",
+        headers: {
+          "user-agent": "cloud build server. source at tjhorner/cloud-buildserver. nothing malicious here :)"
+        }
+      });
 
-function logRemote(message, socket, tag){
-  console.log(message.trim());
-  // TODO actually fix this bug
-  if(message.trim() !== ".") socket.emit("stdout", {stdout: message, tag: tag});
+  github.authenticate({
+    type: "oauth",
+    token: config.keys.github
+  });
 }
 
-function build(scriptIndex, socket, all){
+app.use(bodyParser.json());
+
+function logRemote(message, socket, tag){
+  // TODO actually fix this bug
+  if(message.trim() !== "." && socket) socket.emit("stdout", {stdout: message, tag: tag});
+}
+
+function build(scriptIndex, socket, all, hook){
   if(!all) all = true;
   try{
     if(config.scripts[scriptIndex]){
@@ -36,22 +51,46 @@ function build(scriptIndex, socket, all){
         logRemote("Build script complete with exit code " + code + ".", socket);
         if(code !== 0){
           logRemote("WARNING: Script exited with non-zero exit code. Please check.".red, socket);
+          if(hook){
+            github.statuses.create({
+              user: hook.repository.owner.name,
+              repo: hook.repository.name,
+              sha: hook.head,
+              state: "failure",
+              description: "Cloud deployment",
+              context: "cloud/deployment"
+            });
+          }
         }
         if(all){
-          build(scriptIndex + 1, socket);
+          build(scriptIndex + 1, socket, true, hook);
         }else{
           logRemote("Script run complete, bye!", socket);
-          socket.emit("build:complete");
-          socket.disconnect();
+          if(hook){
+            github.statuses.create({
+              user: hook.repository.owner.name,
+              repo: hook.repository.name,
+              sha: hook.head,
+              state: "success",
+              description: "Cloud deployment",
+              context: "cloud/deployment"
+            });
+          }
+          if(socket){
+            socket.emit("build:complete");
+            socket.disconnect();
+          }
         }
       });
     }else{
       logRemote("Build complete, bye!", socket);
-      socket.emit("build:complete");
-      socket.disconnect();
+      if(socket){
+        socket.emit("build:complete");
+        socket.disconnect();
+      }
     }
   }catch(e){
-    socket.emit("build:complete");
+    if(socket) socket.emit("build:complete");
     logRemote("Internal build error, exiting. Error:\n" + e, socket);
   }
 }
@@ -108,5 +147,34 @@ io.on('connection', function(socket){
 app.get("/", function(req, res){
   res.redirect("https://github.com/tjhorner/cloud-buildserver");
 });
+
+app.get('/status', function(req, res){
+  res.send({ready: true});
+});
+
+if(config.keys.github){
+  app.post("/github", function(req, res){
+    var hmac = crypto.createHmac("sha1", config.auth.password),
+        originalBody = JSON.stringify(req.body);
+
+    hmac.update(originalBody);
+
+    if(hmac.digest() === req.headers["X-Hub-Signature"]){
+      var hook = req.body;
+      build(0, undefined, true, hook);
+      github.statuses.create({
+        user: hook.repository.owner.name,
+        repo: hook.repository.name,
+        sha: hook.head,
+        state: "pending",
+        description: "Cloud deployment",
+        context: "cloud/deployment"
+      });
+      res.send({ success: true });
+    }else{
+      res.send({ success: false }, 401);
+    }
+  });
+}
 
 http.listen(config.listen_port);
