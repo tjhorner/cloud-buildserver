@@ -55,7 +55,7 @@ function build(scriptIndex, socket, all, hook){
             github.statuses.create({
               user: hook.repository.owner.name,
               repo: hook.repository.name,
-              sha: hook.head,
+              sha: hook.after,
               state: "failure",
               description: "Cloud deployment",
               context: "cloud/deployment"
@@ -70,7 +70,7 @@ function build(scriptIndex, socket, all, hook){
             github.statuses.create({
               user: hook.repository.owner.name,
               repo: hook.repository.name,
-              sha: hook.head,
+              sha: hook.after,
               state: "success",
               description: "Cloud deployment",
               context: "cloud/deployment"
@@ -159,7 +159,7 @@ if(config.keys.github){
     github.statuses.create({
       user: hook.repository.owner.name,
       repo: hook.repository.name,
-      sha: hook.head,
+      sha: hook.after,
       state: "pending",
       description: "Cloud deployment",
       context: "cloud/deployment"
