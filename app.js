@@ -84,6 +84,16 @@ function build(scriptIndex, socket, all, hook){
       });
     }else{
       logRemote("Build complete, bye!", socket);
+      if(hook){
+        github.statuses.create({
+          user: hook.repository.owner.name,
+          repo: hook.repository.name,
+          sha: hook.after,
+          state: "success",
+          description: "Cloud deployment",
+          context: "cloud/deployment"
+        });
+      }
       if(socket){
         socket.emit("build:complete");
         socket.disconnect();
