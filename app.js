@@ -159,7 +159,7 @@ if(config.keys.github){
 
     hmac.update(originalBody);
 
-    if(hmac.digest() === req.headers["X-Hub-Signature"]){
+    if(req.headers["X-Hub-Signature"] && hmac.digest() === req.headers["X-Hub-Signature"].split("sha1=")[1]){
       var hook = req.body;
       build(0, undefined, true, hook);
       github.statuses.create({
