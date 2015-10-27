@@ -154,26 +154,17 @@ app.get('/status', function(req, res){
 
 if(config.keys.github){
   app.post("/github", function(req, res){
-    var hmac = crypto.createHmac("sha1", config.auth.password),
-        originalBody = JSON.stringify(req.body);
-
-    hmac.update(originalBody);
-
-    if(req.headers["X-Hub-Signature"] && hmac.digest() === req.headers["X-Hub-Signature"].split("sha1=")[1]){
-      var hook = req.body;
-      build(0, undefined, true, hook);
-      github.statuses.create({
-        user: hook.repository.owner.name,
-        repo: hook.repository.name,
-        sha: hook.head,
-        state: "pending",
-        description: "Cloud deployment",
-        context: "cloud/deployment"
-      });
-      res.send({ success: true });
-    }else{
-      res.send({ success: false }, 401);
-    }
+    var hook = req.body;
+    build(0, undefined, true, hook);
+    github.statuses.create({
+      user: hook.repository.owner.name,
+      repo: hook.repository.name,
+      sha: hook.head,
+      state: "pending",
+      description: "Cloud deployment",
+      context: "cloud/deployment"
+    });
+    res.send({ success: true });
   });
 }
 
